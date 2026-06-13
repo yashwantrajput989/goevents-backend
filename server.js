@@ -5,6 +5,32 @@ const path = require('path');
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
+// --- Observability In-Memory Logs Interceptor ---
+const recentLogs = [];
+const MAX_LOGS = 100;
+
+function addLog(type, message) {
+  const timestamp = new Date().toISOString();
+  recentLogs.push({ timestamp, type, message });
+  if (recentLogs.length > MAX_LOGS) {
+    recentLogs.shift();
+  }
+}
+
+const originalLog = console.log;
+console.log = function (...args) {
+  originalLog.apply(console, args);
+  const msg = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ');
+  addLog('INFO', msg);
+};
+
+const originalError = console.error;
+console.error = function (...args) {
+  originalError.apply(console, args);
+  const msg = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ');
+  addLog('ERROR', msg);
+};
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -1029,6 +1055,541 @@ app.post('/api/artists/:id/book', async (req, res) => {
     console.error("Book artist error:", err);
     res.status(500).json({ error: 'Database error' });
   }
+});
+
+// --- OBSERVABILITY HUB DASHBOARD ENDPOINTS ---
+
+// JSON stats endpoint
+app.get('/api/observability/stats', async (req, res) => {
+  let dbStatus = 'Disconnected';
+  let dbLatency = null;
+  let dbTables = [];
+  
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const queryStart = Date.now();
+    await conn.query("SELECT 1");
+    dbLatency = Date.now() - queryStart;
+    dbStatus = 'Connected';
+    
+    const tablesList = ['profiles', 'companies', 'events', 'bookings', 'artist_bookings', 'shows'];
+    for (const table of tablesList) {
+      try {
+        const [rows] = await conn.query(`SELECT COUNT(*) as count FROM \`${table}\``);
+        dbTables.push({ table, count: rows[0].count });
+      } catch (tableErr) {
+        dbTables.push({ table, count: 'Not Created' });
+      }
+    }
+  } catch (err) {
+    dbStatus = 'Error: ' + err.message;
+  } finally {
+    if (conn) conn.release();
+  }
+
+  const uptime = process.uptime();
+  const memoryUsage = process.memoryUsage();
+  
+  res.json({
+    server: {
+      uptime: Math.round(uptime),
+      memory: {
+        rss: Math.round(memoryUsage.rss / 1024 / 1024),
+        heapTotal: Math.round(memoryUsage.heapTotal / 1024 / 1024),
+        heapUsed: Math.round(memoryUsage.heapUsed / 1024 / 1024),
+      },
+      nodeVersion: process.version,
+      platform: process.platform
+    },
+    database: {
+      status: dbStatus,
+      latency: dbLatency,
+      tables: dbTables
+    }
+  });
+});
+
+// JSON logs endpoint
+app.get('/api/observability/logs', (req, res) => {
+  res.json(recentLogs);
+});
+
+// Observation panel HTML page
+app.get('/observability', (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Goo Events - Observability Console</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #040406;
+      --bg-card: rgba(255, 255, 255, 0.02);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --violet-bright: #8b5cf6;
+      --accent-pink: #ec4899;
+      --accent-cyan: #06b6d4;
+      --accent-gold: #f59e0b;
+      --status-green: #10b981;
+      --status-red: #ef4444;
+      --text-main: #f3f4f6;
+      --text-secondary: #9ca3af;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      font-family: 'Outfit', sans-serif;
+      overflow-x: hidden;
+      min-height: 100vh;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(139, 92, 246, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.08) 0%, transparent 40%);
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2.5rem;
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 1.5rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .logo {
+      font-size: 1.75rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--violet-bright), var(--accent-pink));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.05em;
+    }
+
+    .badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 0.25rem 0.5rem;
+      border-radius: 9999px;
+      letter-spacing: 0.05em;
+      border: 1px solid var(--border-subtle);
+      background: rgba(255,255,255,0.05);
+    }
+
+    .badge.active {
+      background: rgba(16, 185, 129, 0.1);
+      border-color: rgba(16, 185, 129, 0.3);
+      color: var(--status-green);
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .pulse-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--status-green);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--status-green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 0.3; }
+      50% { opacity: 1; }
+      100% { opacity: 0.3; }
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      backdrop-filter: blur(16px);
+    }
+
+    .col-4 { grid-column: span 4; }
+    .col-8 { grid-column: span 8; }
+
+    @media (max-width: 900px) {
+      .col-4, .col-8 {
+        grid-column: span 12;
+      }
+    }
+
+    .card-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .metric-value {
+      font-size: 2.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .metric-unit {
+      font-size: 1rem;
+      font-weight: 400;
+      color: var(--text-secondary);
+    }
+
+    .status-text {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-top: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .table-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-top: 0.5rem;
+    }
+
+    .table-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0.75rem;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.04);
+      border-radius: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .table-name {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-main);
+    }
+
+    .table-count {
+      font-weight: 700;
+      color: var(--violet-bright);
+    }
+
+    .terminal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .terminal-controls {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .filter-btn {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      padding: 0.35rem 0.75rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .filter-btn.active {
+      background: var(--violet-bright);
+      border-color: var(--violet-bright);
+      color: white;
+    }
+
+    .terminal-box {
+      background: #020203;
+      border: 1px solid var(--border-subtle);
+      border-radius: 0.75rem;
+      padding: 1rem;
+      height: 400px;
+      overflow-y: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      scroll-behavior: smooth;
+    }
+
+    .log-line {
+      display: flex;
+      gap: 1rem;
+      word-break: break-all;
+    }
+
+    .log-time {
+      color: #555566;
+      flex-shrink: 0;
+    }
+
+    .log-type {
+      font-weight: 700;
+      flex-shrink: 0;
+      text-transform: uppercase;
+      width: 45px;
+    }
+
+    .log-type.info { color: var(--accent-cyan); }
+    .log-type.error { color: var(--status-red); }
+
+    .log-msg {
+      color: #e5e7eb;
+    }
+
+    .checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <h1 class="logo">gooevents</h1>
+        <span class="badge active"><span class="pulse-dot"></span>Observability Hub</span>
+      </div>
+      <div class="badge">API version: 1.0.0</div>
+    </header>
+
+    <div class="dashboard-grid">
+      <!-- Server Health -->
+      <div class="card col-4">
+        <div class="card-title">Server Metrics</div>
+        <div class="metric-value" id="server-uptime">0 <span class="metric-unit">s</span></div>
+        <div class="status-text" style="color: var(--accent-cyan); margin-top: 0.5rem;">
+          Uptime Counter
+        </div>
+        <div class="status-text" style="font-size: 0.8rem; font-weight: normal; margin-top: 1rem; color: var(--text-secondary);">
+          Platform: <span id="server-platform">-</span> | Node: <span id="server-node">-</span>
+        </div>
+      </div>
+
+      <!-- Memory Health -->
+      <div class="card col-4">
+        <div class="card-title">Memory Allocation</div>
+        <div class="metric-value" id="server-memory">0 <span class="metric-unit">MB</span></div>
+        <div class="status-text" style="color: var(--accent-pink); margin-top: 0.5rem;">
+          Heap Used / RSS: <span id="server-rss">-</span> MB
+        </div>
+      </div>
+
+      <!-- Database Connection Status -->
+      <div class="card col-4">
+        <div class="card-title">MySQL Database</div>
+        <div class="status-text" id="db-status-badge" style="color: var(--status-red)">
+          Checking Status...
+        </div>
+        <div class="status-text" style="font-size: 0.85rem; font-weight: normal; margin-top: 0.5rem; color: var(--text-secondary)">
+          Latency Check: <span id="db-latency">-</span> ms
+        </div>
+      </div>
+
+      <!-- Database Entities counts -->
+      <div class="card col-4">
+        <div class="card-title">Staged Entities (MySQL)</div>
+        <div class="table-list" id="db-tables-list">
+          <div style="font-size: 0.8rem; color: var(--text-secondary)">Querying database records count...</div>
+        </div>
+      </div>
+
+      <!-- Log Console -->
+      <div class="card col-8">
+        <div class="terminal-header">
+          <div class="card-title">Live Server Logs</div>
+          <div class="terminal-controls">
+            <label class="checkbox-container">
+              <input type="checkbox" id="autoscroll-chk" checked> Auto-Scroll
+            </label>
+            <button class="filter-btn active" onclick="setFilter('ALL', this)">All</button>
+            <button class="filter-btn" onclick="setFilter('INFO', this)">Info</button>
+            <button class="filter-btn" onclick="setFilter('ERROR', this)">Errors</button>
+          </div>
+        </div>
+        <div class="terminal-box" id="terminal-box">
+          <div class="log-line"><span class="log-time">[System]</span> <span class="log-msg">Logs terminal loaded. Polling server logs...</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentFilter = 'ALL';
+    let logsCache = [];
+
+    function formatUptime(seconds) {
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      const s = seconds % 60;
+      let out = "";
+      if (h > 0) out += h + "h ";
+      if (m > 0 || h > 0) out += m + "m ";
+      out += s + "s";
+      return out;
+    }
+
+    async function fetchStats() {
+      try {
+        const res = await fetch('/api/observability/stats');
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        document.getElementById('server-uptime').innerHTML = formatUptime(data.server.uptime);
+        document.getElementById('server-platform').innerText = data.server.platform;
+        document.getElementById('server-node').innerText = data.server.nodeVersion;
+        
+        document.getElementById('server-memory').innerHTML = data.server.memory.heapUsed + ' <span class="metric-unit">MB</span>';
+        document.getElementById('server-rss').innerText = data.server.memory.rss;
+
+        const dbBadge = document.getElementById('db-status-badge');
+        if (data.database.status === 'Connected') {
+          dbBadge.innerText = 'Connected / Healthy';
+          dbBadge.style.color = 'var(--status-green)';
+          document.getElementById('db-latency').innerText = data.database.latency;
+        } else {
+          dbBadge.innerText = 'Disconnected / Config Error';
+          dbBadge.style.color = 'var(--status-red)';
+          document.getElementById('db-latency').innerText = '-';
+        }
+
+        const tablesList = document.getElementById('db-tables-list');
+        tablesList.innerHTML = '';
+        if (data.database.tables.length === 0) {
+          tablesList.innerHTML = '<div style="font-size:0.8rem; color:var(--text-secondary)">No tables found. Check db credentials.</div>';
+        }
+        data.database.tables.forEach(t => {
+          const row = document.createElement('div');
+          row.className = 'table-item';
+          row.innerHTML = \`<span class="table-name">\${t.table}</span><span class="table-count">\${t.count}</span>\`;
+          tablesList.appendChild(row);
+        });
+
+      } catch (err) {
+        console.error("Failed to fetch server stats:", err);
+      }
+    }
+
+    async function fetchLogs() {
+      try {
+        const res = await fetch('/api/observability/logs');
+        if (!res.ok) return;
+        logsCache = await res.json();
+        renderLogs();
+      } catch (err) {
+        console.error("Failed to fetch logs:", err);
+      }
+    }
+
+    function setFilter(filter, element) {
+      currentFilter = filter;
+      document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+      element.classList.add('active');
+      renderLogs();
+    }
+
+    function renderLogs() {
+      const box = document.getElementById('terminal-box');
+      const autoscroll = document.getElementById('autoscroll-chk').checked;
+      
+      const scrollPos = box.scrollTop;
+      const scrollHeight = box.scrollHeight;
+      const clientHeight = box.clientHeight;
+      const wasAtBottom = (scrollHeight - scrollPos) <= (clientHeight + 20);
+
+      box.innerHTML = '';
+      
+      const filteredLogs = logsCache.filter(log => {
+        if (currentFilter === 'ALL') return true;
+        return log.type.toUpperCase() === currentFilter;
+      });
+
+      if (filteredLogs.length === 0) {
+        box.innerHTML = '<div class="log-line"><span class="log-time">[System]</span> <span class="log-msg">No logs found matching this filter.</span></div>';
+        return;
+      }
+
+      filteredLogs.forEach(log => {
+        const line = document.createElement('div');
+        line.className = 'log-line';
+        
+        const timeSpan = document.createElement('span');
+        timeSpan.className = 'log-time';
+        const date = new Date(log.timestamp);
+        const timeStr = date.toTimeString().split(' ')[0] + '.' + String(date.getMilliseconds()).padStart(3, '0');
+        timeSpan.innerText = \`[\${timeStr}]\`;
+        
+        const typeSpan = document.createElement('span');
+        typeSpan.className = \`log-type \${log.type.toLowerCase()}\`;
+        typeSpan.innerText = log.type;
+
+        const msgSpan = document.createElement('span');
+        msgSpan.className = 'log-msg';
+        msgSpan.innerText = log.message;
+
+        line.appendChild(timeSpan);
+        line.appendChild(typeSpan);
+        line.appendChild(msgSpan);
+        box.appendChild(line);
+      });
+
+      if (autoscroll && wasAtBottom) {
+        box.scrollTop = box.scrollHeight;
+      }
+    }
+
+    fetchStats();
+    fetchLogs();
+    setInterval(fetchStats, 3000);
+    setInterval(fetchLogs, 2000);
+  </script>
+</body>
+</html>`);
 });
 
 app.listen(PORT, () => {
