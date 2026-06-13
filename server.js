@@ -53,6 +53,131 @@ const pool = mysql.createPool({
   queueLimit: 0
 });
 
+// Fallback Mock Datasets when MySQL is offline
+const MOCK_COMPANIES = [
+  {
+    id: 'comp_test_1',
+    name: 'DJ Shadow & Rave-X',
+    admin_user_id: 'test-admin-123',
+    city: 'Mumbai',
+    description: 'DJ Shadow is a pioneer of electronic music, specializing in techno and tech-house sets.',
+    website: 'https://djshadow.com',
+    contact_email: 'shadow@gooevents.com',
+    phone: '9876543210',
+    payout_upi: 'shadow@upi',
+    verified: 1,
+    category: 'DJ',
+    genres: JSON.stringify(['Techno', 'House']),
+    gallery_images: JSON.stringify([
+      'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=1000',
+      'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1000'
+    ]),
+    video_url: 'https://www.youtube.com/watch?v=zSWdZVtXT7E',
+    booking_price: 25000.00,
+    social_links: JSON.stringify({ instagram: 'https://instagram.com/djshadow', youtube: 'https://youtube.com', spotify: 'https://spotify.com' })
+  },
+  {
+    id: 'comp_test_2',
+    name: 'Aria Woods & The Band',
+    admin_user_id: null,
+    city: 'Visakhapatnam',
+    description: 'Aria Woods is an indie-pop singer and acoustic songwriter known for her soulful voice.',
+    website: 'https://ariawoods.music',
+    contact_email: 'aria@gooevents.com',
+    phone: '9988776655',
+    payout_upi: 'aria@upi',
+    verified: 1,
+    category: 'Singer',
+    genres: JSON.stringify(['Acoustic', 'Indie-Pop', 'Soul']),
+    gallery_images: JSON.stringify([
+      'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=1000',
+      'https://images.unsplash.com/photo-1459749411177-042180ce673c?q=80&w=1000'
+    ]),
+    video_url: 'https://www.youtube.com/watch?v=Way9Dexny3w',
+    booking_price: 18000.00,
+    social_links: JSON.stringify({ instagram: 'https://instagram.com/ariawoods', youtube: 'https://youtube.com', spotify: 'https://spotify.com' })
+  },
+  {
+    id: 'comp_test_3',
+    name: 'Rohan Joshi',
+    admin_user_id: null,
+    city: 'Mumbai',
+    description: "Rohan Joshi is one of India's finest stand-up comedians.",
+    website: 'https://rohanjoshi.com',
+    contact_email: 'rohan@gooevents.com',
+    phone: '9820098200',
+    payout_upi: 'rohan@upi',
+    verified: 1,
+    category: 'Comedian',
+    genres: JSON.stringify(['Comedy', 'Standup']),
+    gallery_images: JSON.stringify([
+      'https://images.unsplash.com/photo-1585699324551-f6c309eedee5?q=80&w=1000'
+    ]),
+    video_url: 'https://www.youtube.com/watch?v=Way9Dexny3w',
+    booking_price: 35000.00,
+    social_links: JSON.stringify({ instagram: 'https://instagram.com/rohanjoshi', youtube: '', spotify: '' })
+  }
+];
+
+const MOCK_EVENTS = [
+  {
+    id: 'ev_cyber_rave_mumbai',
+    company_id: 'comp_test_1',
+    title: 'Cyberpunk Rooftop Rave',
+    short_description: 'A neon-drenched night of futuristic beats and high-octane vibes.',
+    description: 'Get ready for the most immersive cyberpunk rave Mumbai has ever witnessed. We are taking over the highest rooftop for a night of underground techno, custom-built laser displays, and high-energy synthesizers. Experience an elite lineup of techno artists.',
+    venue_name: 'The Neon Nest Loft',
+    city: 'Mumbai',
+    category: 'Music',
+    price: 999.00,
+    cover_image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1000',
+    start_date: '2026-06-25T21:00:00.000Z',
+    status: 'published',
+    tickets_sold: 45,
+    ticket_types: JSON.stringify([
+      { id: 't-vip', name: 'VIP Access (Backstage + Drink)', price: 1999, benefits: ['Exclusive loft access', 'Meet and greet', 'Complimentary drink ticket'] },
+      { id: 't-ga', name: 'General Admission', price: 999, benefits: ['Standard entry', 'High-energy main dancefloor'] }
+    ])
+  },
+  {
+    id: 'ev_comedy_standup_vizag',
+    company_id: 'comp_test_3',
+    title: 'Standup Comedy Showdown',
+    short_description: "Pure observational wit and hilarious punchlines from India's top comedians.",
+    description: 'A laughing riot incoming to Visakhapatnam! Bring your friends and family for an evening filled with absolute humor, hilarious storytelling, and pure comedy genius.',
+    venue_name: 'The Laugh Club Cafe',
+    city: 'Visakhapatnam',
+    category: 'comedy',
+    price: 499.00,
+    cover_image: 'https://images.unsplash.com/photo-1585699324551-f6c309eedee5?q=80&w=1000',
+    start_date: '2026-06-28T19:00:00.000Z',
+    status: 'published',
+    tickets_sold: 23,
+    ticket_types: JSON.stringify([
+      { id: 't-front-row', name: 'Front Row Premium', price: 799, benefits: ['Guaranteed front row seating', 'Free mocktail/soft drink'] },
+      { id: 't-reg', name: 'Standard Seat', price: 499, benefits: ['Standard general seating'] }
+    ])
+  },
+  {
+    id: 'ev_wellness_camp_vizag',
+    company_id: 'comp_test_2',
+    title: 'Sunset Yoga & Sound Healing',
+    short_description: 'Align your mind, body, and spirit by the beach during a stunning golden hour.',
+    description: 'Rejuvenate your soul with a meditation masterclass at the beach during sunset. This wellness workshop combines Vinyasa yoga flows with live ambient acoustic handpan and sound bowls therapy.',
+    venue_name: 'Bayview Sands Resort',
+    city: 'Visakhapatnam',
+    category: 'wellness',
+    price: 799.00,
+    cover_image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=1000',
+    start_date: '2026-06-30T17:00:00.000Z',
+    status: 'published',
+    tickets_sold: 12,
+    ticket_types: JSON.stringify([
+      { id: 't-yoga-pass', name: 'Full Workshop Pass', price: 799, benefits: ['Premium yoga mat usage', 'Sound bath session'] }
+    ])
+  }
+];
+
 // File Upload Setup with safe validation
 const multer = require('multer');
 const storage = multer.diskStorage({
@@ -551,8 +676,16 @@ app.get('/api/events', async (req, res) => {
     }));
     res.json(parsedRows);
   } catch (err) {
-    console.error("Get events error:", err);
-    res.status(500).json({ error: 'Database error' });
+    console.error("Get events error, falling back to mock data:", err);
+    let filtered = MOCK_EVENTS;
+    if (city && city !== 'All') {
+      filtered = filtered.filter(e => e.city.toLowerCase() === city.toLowerCase());
+    }
+    const parsed = filtered.map(r => ({
+      ...r,
+      ticket_types: r.ticket_types ? JSON.parse(r.ticket_types) : []
+    }));
+    res.json(parsed);
   }
 });
 
@@ -565,8 +698,14 @@ app.get('/api/events/:id', async (req, res) => {
     event.ticket_types = event.ticket_types ? JSON.parse(event.ticket_types) : [];
     res.json(event);
   } catch (err) {
-    console.error("Get event error:", err);
-    res.status(500).json({ error: 'Database error' });
+    console.error("Get event error, falling back to mock data:", err);
+    const event = MOCK_EVENTS.find(e => e.id === req.params.id);
+    if (!event) return res.status(404).json({ error: 'Event not found' });
+    const parsedEvent = {
+      ...event,
+      ticket_types: event.ticket_types ? JSON.parse(event.ticket_types) : []
+    };
+    res.json(parsedEvent);
   }
 });
 
@@ -700,8 +839,27 @@ app.get('/api/bookings/user/:userId', async (req, res) => {
     }));
     res.json(parsedRows);
   } catch (err) {
-    console.error("Get user bookings error:", err);
-    res.status(500).json({ error: 'Database error' });
+    console.error("Get user bookings error, falling back to mock data:", err);
+    const mockBookings = [
+      {
+        id: 'bk_mock_1',
+        event_id: 'ev_cyber_rave_mumbai',
+        user_id: req.params.userId,
+        ticket_name: 'VIP Access (Backstage + Drink)',
+        price: 1999.00,
+        quantity: 2,
+        booking_id: 'ING-CYBER-VIP',
+        guests: [],
+        status: 'confirmed',
+        booked_at: new Date().toISOString(),
+        event_title: 'Cyberpunk Rooftop Rave',
+        cover_image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1000',
+        venue_name: 'The Neon Nest Loft',
+        city: 'Mumbai',
+        start_date: '2026-06-25T21:00:00.000Z'
+      }
+    ];
+    res.json(mockBookings);
   }
 });
 
@@ -763,8 +921,19 @@ app.get('/api/admin/dashboard/:userId', async (req, res) => {
 
     res.json({ company, events: parsedEvents });
   } catch (err) {
-    console.error("Admin dashboard data error:", err);
-    res.status(500).json({ error: 'Database error' });
+    console.error("Admin dashboard data error, falling back to mock data:", err);
+    let company = MOCK_COMPANIES.find(c => c.admin_user_id === req.params.userId || c.id === 'comp_test_1');
+    company = {
+      ...company,
+      genres: company.genres ? JSON.parse(company.genres) : [],
+      gallery_images: company.gallery_images ? JSON.parse(company.gallery_images) : [],
+      social_links: company.social_links ? JSON.parse(company.social_links) : {}
+    };
+    const parsedEvents = MOCK_EVENTS.filter(e => e.company_id === company.id).map(e => ({
+      ...e,
+      ticket_types: e.ticket_types ? JSON.parse(e.ticket_types) : []
+    }));
+    res.json({ company, events: parsedEvents });
   }
 });
 
@@ -859,8 +1028,28 @@ app.get('/api/admin/global-stats', async (req, res) => {
       }
     });
   } catch (err) {
-    console.error("Global admin stats error:", err);
-    res.status(500).json({ error: 'Database error' });
+    console.error("Global admin stats error, falling back to mock data:", err);
+    const parsedEvents = MOCK_EVENTS.map(e => ({
+      ...e,
+      ticket_types: e.ticket_types ? JSON.parse(e.ticket_types) : []
+    }));
+
+    const parsedCompanies = MOCK_COMPANIES.map(c => ({
+      ...c,
+      genres: c.genres ? JSON.parse(c.genres) : [],
+      gallery_images: c.gallery_images ? JSON.parse(c.gallery_images) : [],
+      social_links: c.social_links ? JSON.parse(c.social_links) : {}
+    }));
+
+    res.json({
+      events: parsedEvents,
+      companies: parsedCompanies,
+      stats: {
+        totalRevenue: 28989,
+        totalBookings: 80,
+        activeEvents: parsedEvents.length
+      }
+    });
   }
 });
 
@@ -973,8 +1162,21 @@ app.get('/api/artists', async (req, res) => {
 
     res.json(parsedRows);
   } catch (err) {
-    console.error("Get artists error:", err);
-    res.status(500).json({ error: 'Database error' });
+    console.error("Get artists error, falling back to mock data:", err);
+    let filtered = MOCK_COMPANIES;
+    if (category && category.toLowerCase() !== 'all') {
+      filtered = filtered.filter(c => c.category && c.category.toLowerCase() === category.toLowerCase());
+    }
+    if (city && city.toLowerCase() !== 'all') {
+      filtered = filtered.filter(c => c.city && c.city.toLowerCase() === city.toLowerCase());
+    }
+    const parsed = filtered.map(c => ({
+      ...c,
+      genres: c.genres ? JSON.parse(c.genres) : [],
+      gallery_images: c.gallery_images ? JSON.parse(c.gallery_images) : [],
+      social_links: c.social_links ? JSON.parse(c.social_links) : {}
+    }));
+    res.json(parsed);
   }
 });
 
@@ -997,8 +1199,23 @@ app.get('/api/artists/:id', async (req, res) => {
 
     res.json({ artist, events: parsedEvents });
   } catch (err) {
-    console.error("Get artist details error:", err);
-    res.status(500).json({ error: 'Database error' });
+    console.error("Get artist details error, falling back to mock data:", err);
+    const artist = MOCK_COMPANIES.find(c => c.id === req.params.id);
+    if (!artist) return res.status(404).json({ error: 'Artist profile not found' });
+    
+    const parsedArtist = {
+      ...artist,
+      genres: artist.genres ? JSON.parse(artist.genres) : [],
+      gallery_images: artist.gallery_images ? JSON.parse(artist.gallery_images) : [],
+      social_links: artist.social_links ? JSON.parse(artist.social_links) : {}
+    };
+    
+    const artistEvents = MOCK_EVENTS.filter(e => e.company_id === artist.id && e.status === 'published').map(e => ({
+      ...e,
+      ticket_types: e.ticket_types ? JSON.parse(e.ticket_types) : []
+    }));
+    
+    res.json({ artist: parsedArtist, events: artistEvents });
   }
 });
 
