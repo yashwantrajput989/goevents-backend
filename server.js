@@ -178,6 +178,12 @@ const MOCK_EVENTS = [
   }
 ];
 
+const MOCK_VENUES = [
+  { id: 'v_blue_coffee', name: 'The Blue Coffee', city: 'Mumbai', capacity: 120, price: 10000, description: 'Charming coffee shop with a cozy acoustic stage.', cover_image: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?q=80&w=1000' },
+  { id: 'v_loft_space', name: 'The Loft Space', city: 'Mumbai', capacity: 300, price: 15000, description: 'Industrial design loft space with great acoustics and stage lights.', cover_image: 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?q=80&w=1000' },
+  { id: 'v_studio_27', name: 'Studio 27', city: 'Visakhapatnam', capacity: 60, price: 6000, description: 'Intimate studio for standup comedy and workshops.', cover_image: 'https://images.unsplash.com/photo-1514525253361-bee8a48790c3?q=80&w=1000' }
+];
+
 // File Upload Setup with safe validation
 const multer = require('multer');
 const storage = multer.diskStorage({
@@ -222,9 +228,9 @@ app.post('/api/upload', (req, res) => {
 
 // Database Seeding Logic
 async function seedMySQLData(connection) {
-  // Check if profiles table is empty
-  const [profiles] = await connection.query("SELECT COUNT(*) as count FROM profiles");
-  if (profiles[0].count === 0) {
+  // Verify default profiles
+  const [profiles] = await connection.query("SELECT id FROM profiles WHERE id = ?", ['test-admin-123']);
+  if (profiles.length === 0) {
     console.log("Seeding default profiles...");
     await connection.query(`
       INSERT INTO profiles (id, full_name, username, email, avatar_url, role, city, phone, onboarded, interests)
@@ -243,97 +249,97 @@ async function seedMySQLData(connection) {
     ]);
   }
 
-  // Check if companies table is empty
-  const [companies] = await connection.query("SELECT COUNT(*) as count FROM companies");
-  if (companies[0].count === 0) {
-    console.log("Seeding default companies (Artists)...");
-    const demoCompanies = [
-      [
-        'comp_test_1',
-        'DJ Shadow & Rave-X',
-        'test-admin-123',
-        'Mumbai',
-        'DJ Shadow is a pioneer of underground techno and electronic music. Having performed at international music festivals, Shadow brings high energy cyberpunk sets and lasers directly to the floor.',
-        'https://djshadow.com',
-        'shadow@gooevents.com',
-        '9876543210',
-        'shadow@upi',
-        true,
-        'DJ',
-        JSON.stringify(['Techno', 'Cyberpunk', 'House']),
-        JSON.stringify([
-          'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=1000',
-          'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1000',
-          'https://images.unsplash.com/photo-1514525253361-bee8a48790c3?q=80&w=1000'
-        ]),
-        'https://www.youtube.com/watch?v=zSWdZVtXT7E',
-        25000.00,
-        JSON.stringify({ instagram: 'https://instagram.com/djshadow', youtube: 'https://youtube.com', spotify: 'https://spotify.com' })
-      ],
-      [
-        'comp_test_2',
-        'Aria Woods & The Band',
-        null,
-        'Visakhapatnam',
-        'Aria Woods is an indie-pop singer and acoustic songwriter known for her soulful voice and melodic soundscapes that capture the essence of coastal vibes.',
-        'https://ariawoods.music',
-        'aria@gooevents.com',
-        '9988776655',
-        'aria@upi',
-        true,
-        'Singer',
-        JSON.stringify(['Acoustic', 'Indie-Pop', 'Soul']),
-        JSON.stringify([
-          'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=1000',
-          'https://images.unsplash.com/photo-1459749411177-042180ce673c?q=80&w=1000'
-        ]),
-        'https://www.youtube.com/watch?v=Way9Dexny3w',
-        18000.00,
-        JSON.stringify({ instagram: 'https://instagram.com/ariawoods', youtube: 'https://youtube.com', spotify: 'https://spotify.com' })
-      ],
-      [
-        'comp_test_3',
-        'Rohan Joshi',
-        null,
-        'Mumbai',
-        'Rohan Joshi is one of India\'s finest stand-up comedians. His observational style and sharp punchlines make him a platform-favorite, discussing everything from career paths to millennial life.',
-        'https://rohanjoshi.com',
-        'rohan@gooevents.com',
-        '9820098200',
-        'rohan@upi',
-        false,
-        'Comedian',
-        JSON.stringify(['Observational Comedy', 'Standup']),
-        JSON.stringify([
-          'https://images.unsplash.com/photo-1585699324551-f6c309eedee5?q=80&w=1000'
-        ]),
-        'https://www.youtube.com/watch?v=Way9Dexny3w',
-        35000.00,
-        JSON.stringify({ instagram: 'https://instagram.com/rohanjoshi', youtube: 'https://youtube.com', spotify: '' })
-      ],
-      [
-        'vhop_official',
-        'Goo Events Host',
-        null,
-        'Mumbai',
-        'Goo Events official master host team. Coordinating and organizing city-wide live experiences.',
-        'https://gooevents.com',
-        'host@gooevents.com',
-        '9000000000',
-        'gooevents@upi',
-        true,
-        'Host',
-        JSON.stringify(['Event Host', 'MC']),
-        JSON.stringify([
-          'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?q=80&w=1000'
-        ]),
-        '',
-        50000.00,
-        JSON.stringify({ instagram: '', youtube: '', spotify: '' })
-      ]
-    ];
+  // Seed default companies (Artists) by ID
+  console.log("Verifying default companies (Artists)...");
+  const demoCompanies = [
+    [
+      'comp_test_1',
+      'DJ Shadow & Rave-X',
+      'test-admin-123',
+      'Mumbai',
+      'DJ Shadow is a pioneer of underground techno and electronic music. Having performed at international music festivals, Shadow brings high energy cyberpunk sets and lasers directly to the floor.',
+      'https://djshadow.com',
+      'shadow@gooevents.com',
+      '9876543210',
+      'shadow@upi',
+      true,
+      'DJ',
+      JSON.stringify(['Techno', 'Cyberpunk', 'House']),
+      JSON.stringify([
+        'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=1000',
+        'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1000',
+        'https://images.unsplash.com/photo-1514525253361-bee8a48790c3?q=80&w=1000'
+      ]),
+      'https://www.youtube.com/watch?v=zSWdZVtXT7E',
+      25000.00,
+      JSON.stringify({ instagram: 'https://instagram.com/djshadow', youtube: 'https://youtube.com', spotify: 'https://spotify.com' })
+    ],
+    [
+      'comp_test_2',
+      'Aria Woods & The Band',
+      null,
+      'Visakhapatnam',
+      'Aria Woods is an indie-pop singer and acoustic songwriter known for her soulful voice and melodic soundscapes that capture the essence of coastal vibes.',
+      'https://ariawoods.music',
+      'aria@gooevents.com',
+      '9988776655',
+      'aria@upi',
+      true,
+      'Singer',
+      JSON.stringify(['Acoustic', 'Indie-Pop', 'Soul']),
+      JSON.stringify([
+        'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=1000',
+        'https://images.unsplash.com/photo-1459749411177-042180ce673c?q=80&w=1000'
+      ]),
+      'https://www.youtube.com/watch?v=Way9Dexny3w',
+      18000.00,
+      JSON.stringify({ instagram: 'https://instagram.com/ariawoods', youtube: 'https://youtube.com', spotify: 'https://spotify.com' })
+    ],
+    [
+      'comp_test_3',
+      'Rohan Joshi',
+      null,
+      'Mumbai',
+      'Rohan Joshi is one of India\'s finest stand-up comedians. His observational style and sharp punchlines make him a platform-favorite, discussing everything from career paths to millennial life.',
+      'https://rohanjoshi.com',
+      'rohan@gooevents.com',
+      '9820098200',
+      'rohan@upi',
+      true, // Make Rohan Joshi verified by default so he shows up in the public directory too
+      'Comedian',
+      JSON.stringify(['Observational Comedy', 'Standup']),
+      JSON.stringify([
+        'https://images.unsplash.com/photo-1585699324551-f6c309eedee5?q=80&w=1000'
+      ]),
+      'https://www.youtube.com/watch?v=Way9Dexny3w',
+      35000.00,
+      JSON.stringify({ instagram: 'https://instagram.com/rohanjoshi', youtube: 'https://youtube.com', spotify: '' })
+    ],
+    [
+      'vhop_official',
+      'Goo Events Host',
+      null,
+      'Mumbai',
+      'Goo Events official master host team. Coordinating and organizing city-wide live experiences.',
+      'https://gooevents.com',
+      'host@gooevents.com',
+      '9000000000',
+      'gooevents@upi',
+      true,
+      'Host',
+      JSON.stringify(['Event Host', 'MC']),
+      JSON.stringify([
+        'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?q=80&w=1000'
+      ]),
+      '',
+      50000.00,
+      JSON.stringify({ instagram: '', youtube: '', spotify: '' })
+    ]
+  ];
 
-    for (const c of demoCompanies) {
+  for (const c of demoCompanies) {
+    const [exists] = await connection.query("SELECT id FROM companies WHERE id = ?", [c[0]]);
+    if (exists.length === 0) {
       await connection.query(`
         INSERT INTO companies (id, name, admin_user_id, city, description, website, contact_email, phone, payout_upi, verified, category, genres, gallery_images, video_url, booking_price, social_links)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -341,70 +347,70 @@ async function seedMySQLData(connection) {
     }
   }
 
-  // Check if events table is empty
-  const [events] = await connection.query("SELECT COUNT(*) as count FROM events");
-  if (events[0].count === 0) {
-    console.log("Seeding default events...");
-    const demoEvents = [
-      [
-        'ev_cyber_rave_mumbai',
-        'vhop_official',
-        'Cyberpunk Rooftop Rave',
-        'A neon-drenched night of futuristic beats and high-octane vibes.',
-        'Get ready for the most immersive cyberpunk rave Mumbai has ever witnessed. We are taking over the highest rooftop for a night of underground techno, custom-built laser displays, and high-energy synthesizers. Experience an elite lineup of domestic and international techno artists, cyber-themed cocktails, and absolute pure energy.',
-        'The Neon Nest Loft',
-        'Mumbai',
-        'Music',
-        999.00,
-        'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1000',
-        '2026-06-25T21:00:00.000Z',
-        'published',
-        0,
-        JSON.stringify([
-          { id: 't-vip', name: 'VIP Access (Backstage + Drink)', price: 1999, benefits: ['Exclusive loft access', 'Meet and greet', 'Complimentary drink ticket'] },
-          { id: 't-ga', name: 'General Admission', price: 999, benefits: ['Standard entry', 'High-energy main dancefloor'] }
-        ])
-      ],
-      [
-        'ev_comedy_standup_vizag',
-        'comp_test_1',
-        'Standup Comedy Showdown',
-        'Pure observational wit and hilarious punchlines from India\'s top comedians.',
-        'A laughing riot incoming to Visakhapatnam! Bring your friends and family for an evening filled with absolute humor, hilarious storytelling, and pure comedy genius. Features a brilliant panel of 4 comics performing fresh, never-heard-before material.',
-        'The Laugh Club Cafe',
-        'Visakhapatnam',
-        'comedy',
-        499.00,
-        'https://images.unsplash.com/photo-1585699324551-f6c309eedee5?q=80&w=1000',
-        '2026-06-28T19:00:00.000Z',
-        'published',
-        0,
-        JSON.stringify([
-          { id: 't-front-row', name: 'Front Row Premium', price: 799, benefits: ['Guaranteed front row seating', 'Free mocktail/soft drink'] },
-          { id: 't-reg', name: 'Standard Seat', price: 499, benefits: ['Standard general seating'] }
-        ])
-      ],
-      [
-        'ev_wellness_camp_vizag',
-        'comp_test_1',
-        'Sunset Yoga & Sound Healing',
-        'Align your mind, body, and spirit by the beach during a stunning golden hour.',
-        'Rejuvenate your soul with a meditation masterclass at the beach during sunset. This wellness workshop combines Vinyasa yoga flows with live ambient acoustic handpan and sound bowls therapy, ending with organic health drinks and community bonding.',
-        'Bayview Sands Resort',
-        'Visakhapatnam',
-        'wellness',
-        799.00,
-        'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=1000',
-        '2026-06-30T17:00:00.000Z',
-        'published',
-        0,
-        JSON.stringify([
-          { id: 't-yoga-pass', name: 'Full Workshop Pass', price: 799, benefits: ['Premium yoga mat usage', 'Sound bath session', 'Organic energy drinks'] }
-        ])
-      ]
-    ];
+  // Seed default events by ID
+  console.log("Verifying default events...");
+  const demoEvents = [
+    [
+      'ev_cyber_rave_mumbai',
+      'vhop_official',
+      'Cyberpunk Rooftop Rave',
+      'A neon-drenched night of futuristic beats and high-octane vibes.',
+      'Get ready for the most immersive cyberpunk rave Mumbai has ever witnessed. We are taking over the highest rooftop for a night of underground techno, custom-built laser displays, and high-energy synthesizers. Experience an elite lineup of domestic and international techno artists, cyber-themed cocktails, and absolute pure energy.',
+      'The Neon Nest Loft',
+      'Mumbai',
+      'Music',
+      999.00,
+      'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1000',
+      '2026-06-25T21:00:00.000Z',
+      'published',
+      0,
+      JSON.stringify([
+        { id: 't-vip', name: 'VIP Access (Backstage + Drink)', price: 1999, benefits: ['Exclusive loft access', 'Meet and greet', 'Complimentary drink ticket'] },
+        { id: 't-ga', name: 'General Admission', price: 999, benefits: ['Standard entry', 'High-energy main dancefloor'] }
+      ])
+    ],
+    [
+      'ev_comedy_standup_vizag',
+      'comp_test_3',
+      'Standup Comedy Showdown',
+      'Pure observational wit and hilarious punchlines from India\'s top comedians.',
+      'A laughing riot incoming to Visakhapatnam! Bring your friends and family for an evening filled with absolute humor, hilarious storytelling, and pure comedy genius. Features a brilliant panel of 4 comics performing fresh, never-heard-before material.',
+      'The Laugh Club Cafe',
+      'Visakhapatnam',
+      'comedy',
+      499.00,
+      'https://images.unsplash.com/photo-1585699324551-f6c309eedee5?q=80&w=1000',
+      '2026-06-28T19:00:00.000Z',
+      'published',
+      0,
+      JSON.stringify([
+        { id: 't-front-row', name: 'Front Row Premium', price: 799, benefits: ['Guaranteed front row seating', 'Free mocktail/soft drink'] },
+        { id: 't-reg', name: 'Standard Seat', price: 499, benefits: ['Standard general seating'] }
+      ])
+    ],
+    [
+      'ev_wellness_camp_vizag',
+      'comp_test_2',
+      'Sunset Yoga & Sound Healing',
+      'Align your mind, body, and spirit by the beach during a stunning golden hour.',
+      'Rejuvenate your soul with a meditation masterclass at the beach during sunset. This wellness workshop combines Vinyasa yoga flows with live ambient acoustic handpan and sound bowls therapy, ending with organic health drinks and community bonding.',
+      'Bayview Sands Resort',
+      'Visakhapatnam',
+      'wellness',
+      799.00,
+      'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=1000',
+      '2026-06-30T17:00:00.000Z',
+      'published',
+      0,
+      JSON.stringify([
+        { id: 't-yoga-pass', name: 'Full Workshop Pass', price: 799, benefits: ['Premium yoga mat usage', 'Sound bath session', 'Organic energy drinks'] }
+      ])
+    ]
+  ];
 
-    for (const e of demoEvents) {
+  for (const e of demoEvents) {
+    const [exists] = await connection.query("SELECT id FROM events WHERE id = ?", [e[0]]);
+    if (exists.length === 0) {
       await connection.query(`
         INSERT INTO events (id, company_id, title, short_description, description, venue_name, city, category, price, cover_image, start_date, status, tickets_sold, ticket_types)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -412,9 +418,9 @@ async function seedMySQLData(connection) {
     }
   }
 
-  // Check if shows table is empty (legacy support)
-  const [showsCount] = await connection.query("SELECT COUNT(*) as count FROM shows");
-  if (showsCount[0].count === 0) {
+  // Seed legacy shows
+  const [showsCount] = await connection.query("SELECT _id FROM shows WHERE _id = ?", ["1"]);
+  if (showsCount.length === 0) {
     console.log("Seeding legacy shows...");
     await connection.query(`
       INSERT INTO shows (_id, title, description, poster, backdrop, category, genre, rating, price)
@@ -430,6 +436,48 @@ async function seedMySQLData(connection) {
       9.8,
       999.00
     ]);
+  }
+
+  // Seed default venues
+  console.log("Verifying default venues...");
+  const demoVenues = [
+    [
+      'v_blue_coffee',
+      'The Blue Coffee',
+      'Mumbai',
+      120,
+      10000.00,
+      'Charming coffee shop with a cozy acoustic stage.',
+      'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?q=80&w=1000'
+    ],
+    [
+      'v_loft_space',
+      'The Loft Space',
+      'Mumbai',
+      300,
+      15000.00,
+      'Industrial design loft space with great acoustics and stage lights.',
+      'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?q=80&w=1000'
+    ],
+    [
+      'v_studio_27',
+      'Studio 27',
+      'Visakhapatnam',
+      60,
+      6000.00,
+      'Intimate studio for standup comedy and workshops.',
+      'https://images.unsplash.com/photo-1514525253361-bee8a48790c3?q=80&w=1000'
+    ]
+  ];
+
+  for (const v of demoVenues) {
+    const [exists] = await connection.query("SELECT id FROM venues WHERE id = ?", [v[0]]);
+    if (exists.length === 0) {
+      await connection.query(`
+        INSERT INTO venues (id, name, city, capacity, price, description, cover_image)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `, v);
+    }
   }
 }
 
@@ -549,6 +597,20 @@ async function initDB() {
         genre TEXT NULL,
         rating DECIMAL(3,1) DEFAULT 0.0,
         price DECIMAL(10,2) DEFAULT 0.00
+      )
+    `);
+
+    // Create venues table
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS venues (
+        id VARCHAR(128) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        city VARCHAR(100) NULL,
+        capacity INT DEFAULT 100,
+        price DECIMAL(10,2) DEFAULT 0.00,
+        description TEXT NULL,
+        cover_image VARCHAR(512) NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
@@ -1271,6 +1333,104 @@ app.post('/api/artists/:id/book', async (req, res) => {
   } catch (err) {
     console.error("Book artist error:", err);
     res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// 17. Venues API Endpoints
+const MOCK_VENUES_GLOBAL = [
+  { id: 'v_blue_coffee', name: 'The Blue Coffee', city: 'Mumbai', capacity: 120, price: 10000, description: 'Charming coffee shop with a cozy acoustic stage.', cover_image: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?q=80&w=1000' },
+  { id: 'v_loft_space', name: 'The Loft Space', city: 'Mumbai', capacity: 300, price: 15000, description: 'Industrial design loft space with great acoustics and stage lights.', cover_image: 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?q=80&w=1000' },
+  { id: 'v_studio_27', name: 'Studio 27', city: 'Visakhapatnam', capacity: 60, price: 6000, description: 'Intimate studio for standup comedy and workshops.', cover_image: 'https://images.unsplash.com/photo-1514525253361-bee8a48790c3?q=80&w=1000' }
+];
+
+app.get('/api/venues', async (req, res) => {
+  const { city } = req.query;
+  try {
+    let query = "SELECT * FROM venues";
+    let params = [];
+    if (city && city !== 'All') {
+      query += " WHERE LOWER(city) = LOWER(?)";
+      params.push(city);
+    }
+    const [rows] = await pool.query(query, params);
+    res.json(rows);
+  } catch (err) {
+    console.error("Get venues error, falling back to mock data:", err);
+    let filtered = MOCK_VENUES_GLOBAL;
+    if (city && city !== 'All') {
+      filtered = filtered.filter(v => v.city.toLowerCase() === city.toLowerCase());
+    }
+    res.json(filtered);
+  }
+});
+
+app.post('/api/venues', async (req, res) => {
+  const { name, city, capacity, price, description, cover_image } = req.body;
+  const id = `v_${Math.random().toString(36).substring(2, 11)}`;
+  try {
+    await pool.query(`
+      INSERT INTO venues (id, name, city, capacity, price, description, cover_image)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `, [id, name, city || 'Mumbai', parseInt(capacity) || 100, parseFloat(price) || 0.00, description || '', cover_image || '']);
+    res.status(201).json({ id, message: 'Venue registered successfully' });
+  } catch (err) {
+    console.error("Create venue error:", err);
+    MOCK_VENUES_GLOBAL.push({
+      id,
+      name,
+      city: city || 'Mumbai',
+      capacity: parseInt(capacity) || 100,
+      price: parseFloat(price) || 0.00,
+      description: description || '',
+      cover_image: cover_image || ''
+    });
+    res.status(201).json({ id, message: 'Venue registered locally (fallback mode)' });
+  }
+});
+
+app.post('/api/venues/:id/request', async (req, res) => {
+  const { event_title, preferred_date, organizer_id } = req.body;
+  console.log(`[INGO Venue request] Event "${event_title}" requests venue "${req.params.id}" on date "${preferred_date}" by Organizer: ${organizer_id}`);
+  res.json({ message: 'Venue booking request sent. Venue partner will contact you shortly.' });
+});
+
+// 18. Register Artist Portfolio (Join as Artist)
+app.post('/api/artists/register', async (req, res) => {
+  const { userId, name, category, genres, booking_price, description, video_url, contact_email, phone, social_links, gallery_images } = req.body;
+  const companyId = `comp_${Math.random().toString(36).substring(2, 11)}`;
+  try {
+    const [existing] = await pool.query("SELECT * FROM companies WHERE admin_user_id = ?", [userId]);
+    if (existing.length > 0) {
+      await pool.query(`
+        UPDATE companies SET
+          name = ?, category = ?, genres = ?, booking_price = ?, description = ?, video_url = ?, contact_email = ?, phone = ?, social_links = ?, gallery_images = ?, verified = false
+        WHERE admin_user_id = ?
+      `, [name, category, JSON.stringify(genres || []), parseFloat(booking_price) || 0.00, description || '', video_url || '', contact_email || '', phone || '', JSON.stringify(social_links || {}), JSON.stringify(gallery_images || []), userId]);
+      
+      await pool.query("UPDATE profiles SET role = 'admin' WHERE id = ?", [userId]);
+      return res.json({ id: existing[0].id, message: 'Artist portfolio updated and submitted for review!' });
+    }
+
+    await pool.query(`
+      INSERT INTO companies (id, name, admin_user_id, city, description, website, contact_email, phone, payout_upi, verified, category, genres, gallery_images, video_url, booking_price, social_links)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      companyId, name, userId, 'Mumbai', description || '', '', contact_email || '', phone || '', '', false, category,
+      JSON.stringify(genres || []), JSON.stringify(gallery_images || []), video_url || '', parseFloat(booking_price) || 0.00,
+      JSON.stringify(social_links || {})
+    ]);
+
+    await pool.query("UPDATE profiles SET role = 'admin' WHERE id = ?", [userId]);
+    res.status(201).json({ id: companyId, message: 'Artist portfolio registered and submitted for review!' });
+  } catch (err) {
+    console.error("Register artist error:", err);
+    MOCK_COMPANIES.push({
+      id: companyId, name, admin_user_id: userId, city: 'Mumbai', description: description || '', website: '',
+      contact_email: contact_email || '', phone: phone || '', payout_upi: '', verified: 0, category,
+      genres: JSON.stringify(genres || []), gallery_images: JSON.stringify(gallery_images || []), video_url: video_url || '',
+      booking_price: parseFloat(booking_price) || 0.00, social_links: JSON.stringify(social_links || {})
+    });
+    res.status(201).json({ id: companyId, message: 'Artist registered locally (fallback mode)' });
   }
 });
 
