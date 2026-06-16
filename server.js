@@ -305,7 +305,7 @@ async function seedMySQLData(connection) {
       'rohan@gooevents.com',
       '9820098200',
       'rohan@upi',
-      true, // Make Rohan Joshi verified by default so he shows up in the public directory too
+      true,
       'Comedian',
       JSON.stringify(['Observational Comedy', 'Standup']),
       JSON.stringify([
@@ -334,6 +334,153 @@ async function seedMySQLData(connection) {
       '',
       50000.00,
       JSON.stringify({ instagram: '', youtube: '', spotify: '' })
+    ],
+    [
+      'comp_neha_sharma',
+      'Neha Sharma',
+      null,
+      'Hyderabad',
+      'Neha Sharma is a versatile singer with 6+ years of experience in live shows, weddings, and corporate events. Known for her powerful Bollywood vocals and mesmerizing stage presence.',
+      'https://nehasharma.music',
+      'neha@gooevents.com',
+      '9912345678',
+      'neha@upi',
+      true,
+      'Singer',
+      JSON.stringify(['Bollywood', 'Sufi', 'Indie']),
+      JSON.stringify([
+        'https://images.unsplash.com/photo-1516280440614-37939bbacd81?q=80&w=1000',
+        'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?q=80&w=1000'
+      ]),
+      'https://www.youtube.com/watch?v=Way9Dexny3w',
+      15000.00,
+      JSON.stringify({ instagram: 'https://instagram.com/nehasharma', youtube: 'https://youtube.com', spotify: 'https://spotify.com' })
+    ],
+    [
+      'comp_local_train',
+      'The Local Train',
+      null,
+      'Mumbai',
+      'The Local Train is a four-piece alternative rock band blending Indian influences with Fusion sound. Known for their energetic live shows and soulful music across 250+ shows.',
+      'https://thelocaltrainband.com',
+      'localtrainband@gooevents.com',
+      '9845123456',
+      'localtrain@upi',
+      true,
+      'Band',
+      JSON.stringify(['Fusion', 'Hindi', 'English', 'Indie']),
+      JSON.stringify([
+        'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=1000',
+        'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?q=80&w=1000'
+      ]),
+      'https://www.youtube.com/watch?v=zSWdZVtXT7E',
+      80000.00,
+      JSON.stringify({ instagram: 'https://instagram.com/thelocaltrainband', youtube: 'https://youtube.com', spotify: 'https://spotify.com' })
+    ],
+    [
+      'comp_priya_dance',
+      'Priya Dance Academy',
+      null,
+      'Bangalore',
+      'Priya Dance Academy offers breathtaking Bharatanatyam and Contemporary fusion performances for corporate events, weddings, and cultural festivals. Led by award-winning choreographer Priya Nair.',
+      'https://priyadance.in',
+      'priya@gooevents.com',
+      '9987654321',
+      'priya@upi',
+      true,
+      'Dancer',
+      JSON.stringify(['Bharatanatyam', 'Contemporary', 'Fusion']),
+      JSON.stringify([
+        'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=1000',
+        'https://images.unsplash.com/photo-1547153760-18fc86324498?q=80&w=1000'
+      ]),
+      'https://www.youtube.com/watch?v=Way9Dexny3w',
+      22000.00,
+      JSON.stringify({ instagram: 'https://instagram.com/priyadance', youtube: 'https://youtube.com', spotify: '' })
+    ],
+    [
+      'comp_sitar_maestro',
+      'Ravi Shankar Jr.',
+      null,
+      'Hyderabad',
+      'A classically trained sitar maestro with 15 years of performance experience at prestigious venues across India and abroad. Specializes in Hindustani classical and fusion concerts.',
+      'https://ravishankarjr.com',
+      'ravi@gooevents.com',
+      '9756123456',
+      'ravi@upi',
+      true,
+      'Instrumentalist',
+      JSON.stringify(['Hindustani', 'Carnatic', 'Classical Fusion']),
+      JSON.stringify([
+        'https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?q=80&w=1000',
+        'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?q=80&w=1000'
+      ]),
+      'https://www.youtube.com/watch?v=Way9Dexny3w',
+      40000.00,
+      JSON.stringify({ instagram: 'https://instagram.com/ravishankarjr', youtube: 'https://youtube.com', spotify: 'https://spotify.com' })
+    ],
+    [
+      'comp_dj_blaze',
+      'DJ Blaze',
+      null,
+      'Bangalore',
+      'DJ Blaze is a top-10 EDM DJ in India, famous for his explosive Bollywood remixes and pumping commercial house sets. Perfect for college fests, nightclubs, and large concerts.',
+      'https://djblaze.in',
+      'blaze@gooevents.com',
+      '9866789012',
+      'blaze@upi',
+      true,
+      'DJ',
+      JSON.stringify(['Bollywood', 'Commercial House', 'EDM']),
+      JSON.stringify([
+        'https://images.unsplash.com/photo-1571266028243-e4733b0f0bb0?q=80&w=1000',
+        'https://images.unsplash.com/photo-1514525253361-bee8a48790c3?q=80&w=1000'
+      ]),
+      'https://www.youtube.com/watch?v=zSWdZVtXT7E',
+      30000.00,
+      JSON.stringify({ instagram: 'https://instagram.com/djblaze', youtube: 'https://youtube.com', spotify: 'https://spotify.com' })
+    ],
+    [
+      'comp_anchor_vikram',
+      'Vikram Anand',
+      null,
+      'Hyderabad',
+      'Vikram Anand is a bilingual anchor and emcee with 200+ events hosted, including grand weddings, product launches, award shows, and corporate galas in Telugu and English.',
+      'https://vikramanand.com',
+      'vikram@gooevents.com',
+      '9123456789',
+      'vikram@upi',
+      true,
+      'Anchor',
+      JSON.stringify(['Telugu', 'English', 'Hindi', 'Bilingual MC']),
+      JSON.stringify([
+        'https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=1000',
+        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1000'
+      ]),
+      'https://www.youtube.com/watch?v=Way9Dexny3w',
+      20000.00,
+      JSON.stringify({ instagram: 'https://instagram.com/vikramanand', youtube: 'https://youtube.com', spotify: '' })
+    ],
+    [
+      'comp_rnb_strings',
+      'RnB Strings',
+      null,
+      'Mumbai',
+      'RnB Strings is a live band specializing in feel-good R&B, Soul, and Jazz performances. Ideal for intimate rooftop gigs, supper clubs, and jazz lounges.',
+      'https://rnbstrings.music',
+      'rnb@gooevents.com',
+      '9234567890',
+      'rnb@upi',
+      true,
+      'Band',
+      JSON.stringify(['R&B', 'Soul', 'Jazz', 'Neo-Soul']),
+      JSON.stringify([
+        'https://images.unsplash.com/photo-1535712376018-a1af15164a81?q=80&w=1000',
+        'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=1000'
+      ]),
+      'https://www.youtube.com/watch?v=Way9Dexny3w',
+      45000.00,
+      JSON.stringify({ instagram: 'https://instagram.com/rnbstrings', youtube: 'https://youtube.com', spotify: 'https://spotify.com' })
     ]
   ];
 
@@ -404,6 +551,101 @@ async function seedMySQLData(connection) {
       0,
       JSON.stringify([
         { id: 't-yoga-pass', name: 'Full Workshop Pass', price: 799, benefits: ['Premium yoga mat usage', 'Sound bath session', 'Organic energy drinks'] }
+      ])
+    ],
+    [
+      'ev_jazz_fest_bangalore',
+      'comp_rnb_strings',
+      'Saturday Jazz Sessions',
+      'An evening of soul-stirring jazz and neo-soul by Bangalore\'s finest live band.',
+      'Join RnB Strings for an intimate rooftop jazz session at The Loft Space Bangalore. Featuring original compositions, jazz standards, and neo-soul covers alongside premium craft cocktails and small bites.',
+      'The Skyline Rooftop Lounge',
+      'Bangalore',
+      'Music',
+      699.00,
+      'https://images.unsplash.com/photo-1535712376018-a1af15164a81?q=80&w=1000',
+      '2026-07-05T19:30:00.000Z',
+      'published',
+      22,
+      JSON.stringify([
+        { id: 't-jazz-vip', name: 'VIP Table (4 Seats)', price: 2499, benefits: ['Reserved table', 'Welcome drinks', 'Live session recording'] },
+        { id: 't-jazz-gen', name: 'General Pass', price: 699, benefits: ['Open seating', 'Full live show access'] }
+      ])
+    ],
+    [
+      'ev_open_mic_hyderabad',
+      'comp_anchor_vikram',
+      'Goo Open Mic Night – Hyderabad',
+      'Hyderabad\'s most celebrated open mic stage. Poets, musicians, comedians welcome!',
+      'A monthly gathering of raw talent at Studio 27 Hyderabad. This edition features 15 performers – musicians, spoken word artists, and standups – competing for the Crowd Favourite prize of ₹5,000.',
+      'Studio 27 Hyderabad',
+      'Hyderabad',
+      'Open Mic',
+      149.00,
+      'https://images.unsplash.com/photo-1514525253361-bee8a48790c3?q=80&w=1000',
+      '2026-07-08T18:00:00.000Z',
+      'published',
+      60,
+      JSON.stringify([
+        { id: 't-perf-pass', name: 'Performer Pass', price: 0, benefits: ['Stage slot 5-7 min', 'Listed on talent roster', 'Audience voting'] },
+        { id: 't-audience', name: 'Audience Ticket', price: 149, benefits: ['Full show access', 'Voting rights'] }
+      ])
+    ],
+    [
+      'ev_dance_showcase_blr',
+      'comp_priya_dance',
+      'The Dance Confluence 2026',
+      'A dazzling showcase of classical and contemporary dance by award-winning choreographers.',
+      'Priya Dance Academy presents a breathtaking two-hour dance showcase featuring Bharatanatyam, Kathak, and Contemporary fusion choreography. This cultural extravaganza is a must-attend for performing arts lovers across Bangalore.',
+      'Karnataka Rajyotsava Cultural Hall',
+      'Bangalore',
+      'Dance',
+      499.00,
+      'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=1000',
+      '2026-07-12T17:00:00.000Z',
+      'published',
+      0,
+      JSON.stringify([
+        { id: 't-dance-front', name: 'Premium Front Seat', price: 999, benefits: ['Front row reserved seating', 'Post-show meet and greet'] },
+        { id: 't-dance-std', name: 'Standard Seat', price: 499, benefits: ['General hall seating'] }
+      ])
+    ],
+    [
+      'ev_band_night_mumbai',
+      'comp_local_train',
+      'The Local Train – Live in Mumbai',
+      'The iconic indie band returns home for a massive 2-hour headlining concert.',
+      'The Local Train is back in Mumbai! Experience their biggest setlist featuring fan favourites from Aaoge Tum Kabhi and When I\'m With You. Powered by a world-class sound system and dazzling light design at The Neon Nest Loft.',
+      'The Neon Nest Loft',
+      'Mumbai',
+      'Music',
+      1299.00,
+      'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=1000',
+      '2026-07-19T20:00:00.000Z',
+      'published',
+      120,
+      JSON.stringify([
+        { id: 't-band-pit', name: 'Pit Access (Standing)', price: 1299, benefits: ['Closest to stage', 'Standing area'] },
+        { id: 't-band-balcony', name: 'Balcony Seating', price: 1799, benefits: ['Reserved balcony seat', 'Elevated view'] }
+      ])
+    ],
+    [
+      'ev_classical_night_hyd',
+      'comp_sitar_maestro',
+      'Sitar under the Stars',
+      'An enchanting evening of Hindustani classical music by maestro Ravi Shankar Jr.',
+      'Experience the ancient art of the sitar under a canopy of stars at the serene Taramati Baradari Heritage Amphitheatre. Ravi Shankar Jr. performs ragas Yaman, Bhairavi, and an exclusive fusion composition exclusively for Goo Events audiences.',
+      'Taramati Baradari Amphitheatre',
+      'Hyderabad',
+      'Concert',
+      599.00,
+      'https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?q=80&w=1000',
+      '2026-07-22T19:00:00.000Z',
+      'published',
+      0,
+      JSON.stringify([
+        { id: 't-sitar-vip', name: 'VIP Cushion Row', price: 1199, benefits: ['Cushioned front seating', 'Complimentary chai'] },
+        { id: 't-sitar-gen', name: 'General Audience', price: 599, benefits: ['Open lawn seating'] }
       ])
     ]
   ];
