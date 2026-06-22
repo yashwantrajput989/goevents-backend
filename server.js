@@ -3,7 +3,22 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const mysql = require('mysql2/promise');
+const nodemailer = require('nodemailer');
 require('dotenv').config();
+
+// Configure Hostinger SMTP Transporter
+const transporter = nodemailer.createTransport({
+  host: 'smtp.hostinger.com',
+  port: 465,
+  secure: true,
+  auth: {
+    user: 'contact@gooevents.in',
+    pass: 'Gooevents@008',
+  },
+  tls: {
+    rejectUnauthorized: false
+  }
+});
 
 // --- Observability In-Memory Logs Interceptor ---
 const recentLogs = [];
@@ -233,8 +248,8 @@ async function seedMySQLData(connection) {
   if (profiles.length === 0) {
     console.log("Seeding default profiles...");
     await connection.query(`
-      INSERT INTO profiles (id, full_name, username, email, avatar_url, role, city, phone, onboarded, interests)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO profiles (id, full_name, username, email, avatar_url, role, city, phone, onboarded, interests, password, email_verified)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       'test-admin-123',
       'Demo Admin',
@@ -245,7 +260,35 @@ async function seedMySQLData(connection) {
       'Mumbai',
       '9876543210',
       true,
-      JSON.stringify(['Music', 'Comedy'])
+      JSON.stringify(['Music', 'Comedy']),
+      'gooevents1234',
+      true
+    ]);
+  } else {
+    await connection.query(`
+      UPDATE profiles SET password = ?, email_verified = true WHERE id = ?
+    `, ['gooevents1234', 'test-admin-123']);
+  }
+
+  const [superadmin] = await connection.query("SELECT id FROM profiles WHERE id = ?", ['superadmin-123']);
+  if (superadmin.length === 0) {
+    console.log("Seeding default Super Admin...");
+    await connection.query(`
+      INSERT INTO profiles (id, full_name, username, email, avatar_url, role, city, phone, onboarded, interests, password, email_verified)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      'superadmin-123',
+      'Super Admin',
+      'superadmin',
+      'superadmin@gooevents.com',
+      null,
+      'superadmin',
+      'Mumbai',
+      '9999999999',
+      true,
+      JSON.stringify([]),
+      'gooevents1234',
+      true
     ]);
   }
 
@@ -856,7 +899,38 @@ async function initDB() {
       )
     `);
 
-    console.log("Database tables verified/created successfully.");
+    console.log("Database tables verified/created successfully. Checking custom admin/superadmin schema updates...");
+
+    // Helper to alter columns safely
+    async function addColumnSafe(conn, table, col, def) {
+      try {
+        await conn.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${col}\` ${def}`);
+        console.log(`Column ${col} added to table ${table}.`);
+      } catch (err) {
+        if (err.errno === 1060 || err.code === 'ER_DUP_FIELDNAME') {
+          // Column already exists, ignore
+        } else {
+          console.error(`Error adding column ${col} to table ${table}:`, err.message);
+        }
+      }
+    }
+
+    await addColumnSafe(connection, 'profiles', 'password', 'VARCHAR(255) NULL');
+    await addColumnSafe(connection, 'profiles', 'email_verified', 'BOOLEAN DEFAULT FALSE');
+    await addColumnSafe(connection, 'companies', 'manager_name', 'VARCHAR(255) NULL');
+    await addColumnSafe(connection, 'companies', 'manager_phone', 'VARCHAR(255) NULL');
+    await addColumnSafe(connection, 'companies', 'manager_email', 'VARCHAR(255) NULL');
+    await addColumnSafe(connection, 'companies', 'pending_changes', 'TEXT NULL');
+    await addColumnSafe(connection, 'companies', 'available_dates', 'TEXT NULL');
+
+    // Create email_verifications table
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS email_verifications (
+        email VARCHAR(255) PRIMARY KEY,
+        code VARCHAR(10) NOT NULL,
+        expires_at TIMESTAMP NOT NULL
+      )
+    `);
     
     // Seed initial database tables if empty
     await seedMySQLData(connection);
@@ -867,6 +941,320 @@ async function initDB() {
     if (connection) connection.release();
   }
 }
+
+// Initialize database
+initDB();
+
+// --- AD-HOC OTP AND ADMIN MANAGEMENT ENDPOINTS ---
+
+// 1. Send OTP Verification Email
+app.post('/api/auth/send-otp', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+  const expiresAtStr = expiresAt.toISOString().slice(0, 19).replace('T', ' ');
+
+  try {
+    // Save to email_verifications table
+    await pool.query(`
+      INSERT INTO email_verifications (email, code, expires_at)
+      VALUES (?, ?, ?)
+      ON DUPLICKEY UPDATE code = ?, expires_at = ?
+    `, [email, code, expiresAtStr, code, expiresAtStr]);
+
+    // Send email using Nodemailer
+    const mailOptions = {
+      from: '"Goo Events" <contact@gooevents.in>',
+      to: email,
+      subject: 'Goo Events - Email Verification OTP',
+      html: `
+        <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e1e1e8; border-radius: 12px; padding: 24px; background-color: #ffffff;">
+          <h2 style="color: #ea580c; text-align: center; margin-bottom: 24px;">Goo Events Verification Code</h2>
+          <p style="color: #4b5563; font-size: 14px; line-height: 1.5;">Hello,</p>
+          <p style="color: #4b5563; font-size: 14px; line-height: 1.5;">To verify your email address, please use the following 6-digit one-time password (OTP):</p>
+          <div style="background-color: #f3f4f6; border-radius: 8px; padding: 16px; margin: 24px 0; text-align: center;">
+            <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #111827;">\${code}</span>
+          </div>
+          <p style="color: #9ca3af; font-size: 11px; text-align: center;">This code is valid for 10 minutes. If you did not request this code, please ignore this email.</p>
+        </div>
+      `
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log(`OTP \${code} sent successfully to \${email}`);
+    res.json({ message: 'OTP sent successfully' });
+
+  } catch (error) {
+    console.error('Error sending OTP:', error);
+    res.status(500).json({ error: 'Failed to send OTP email. Please check SMTP parameters.' });
+  }
+});
+
+// 2. Verify OTP Code
+app.post('/api/auth/verify-otp', async (req, res) => {
+  const { email, code } = req.body;
+  if (!email || !code) return res.status(400).json({ error: 'Email and Code are required' });
+
+  try {
+    const [rows] = await pool.query("SELECT * FROM email_verifications WHERE email = ?", [email]);
+    if (rows.length === 0) return res.status(400).json({ error: 'No OTP requested for this email' });
+
+    const verification = rows[0];
+    const now = new Date();
+    const expiry = new Date(verification.expires_at);
+
+    if (expiry < now) {
+      return res.status(400).json({ error: 'OTP has expired. Please request a new one.' });
+    }
+
+    if (verification.code !== code) {
+      return res.status(400).json({ error: 'Invalid verification code' });
+    }
+
+    // OTP is valid! Delete record
+    await pool.query("DELETE FROM email_verifications WHERE email = ?", [email]);
+
+    // Update profiles email_verified
+    await pool.query("UPDATE profiles SET email_verified = true WHERE email = ?", [email]);
+
+    res.json({ message: 'Email verified successfully!' });
+
+  } catch (error) {
+    console.error('OTP verification error:', error);
+    res.status(500).json({ error: 'Verification failed' });
+  }
+});
+
+// 3. Login Admin / Super Admin (with database verification)
+app.post('/api/auth/login-admin', async (req, res) => {
+  const { email, password, role } = req.body;
+  if (!email || !password || !role) {
+    return res.status(400).json({ error: 'Email, password and role are required' });
+  }
+
+  try {
+    const [rows] = await pool.query("SELECT * FROM profiles WHERE email = ? AND role = ?", [email, role]);
+    if (rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid credentials or role' });
+    }
+
+    const userProfile = rows[0];
+    // Check password
+    if (userProfile.password !== password) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Return profile
+    res.json({
+      id: userProfile.id,
+      full_name: userProfile.full_name,
+      username: userProfile.username,
+      email: userProfile.email,
+      avatar_url: userProfile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=\\${userProfile.id}`,
+      role: userProfile.role,
+      city: userProfile.city,
+      phone: userProfile.phone,
+      email_verified: !!userProfile.email_verified,
+      onboarded: !!userProfile.onboarded
+    });
+
+  } catch (error) {
+    console.error('Admin login database error:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// 4. Super Admin: Create Artist Account
+app.post('/api/superadmin/create-artist', async (req, res) => {
+  const { name, email, password } = req.body;
+  if (!name || !email || !password) {
+    return res.status(400).json({ error: 'Name, email, and password are required' });
+  }
+
+  try {
+    // Check if email already registered
+    const [existing] = await pool.query("SELECT id FROM profiles WHERE email = ?", [email]);
+    if (existing.length > 0) {
+      return res.status(400).json({ error: 'An account with this email already exists' });
+    }
+
+    const userId = `admin_\${Math.random().toString(36).substring(2, 11)}`;
+    const username = email.split('@')[0];
+
+    // Insert profile
+    await pool.query(`
+      INSERT INTO profiles (id, full_name, username, email, role, onboarded, password, email_verified)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `, [userId, name, username, email, 'admin', false, password, false]);
+
+    // Insert company (Artist Portfolio)
+    const companyId = `comp_\${Math.random().toString(36).substring(2, 11)}`;
+    await pool.query(`
+      INSERT INTO companies (id, name, admin_user_id, contact_email, verified, category, genres, gallery_images, social_links)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      companyId,
+      name,
+      userId,
+      email,
+      false,
+      'DJ',
+      JSON.stringify(['Electronic']),
+      JSON.stringify(['https://images.unsplash.com/photo-1541701494587-cb58502866ab?q=80&w=1000']),
+      JSON.stringify({ instagram: '', youtube: '', spotify: '' })
+    ]);
+
+    console.log(`Artist account \${email} created successfully by Super Admin.`);
+    res.status(201).json({ message: 'Artist account created successfully!' });
+
+  } catch (error) {
+    console.error('Create artist account error:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// 5. Super Admin: Get Pending Approvals (both unverified new artists & verified artists with updates)
+app.get('/api/superadmin/pending-approvals', async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT * FROM companies 
+      WHERE verified = false OR pending_changes IS NOT NULL
+    `);
+
+    const parsedRows = rows.map(c => ({
+      ...c,
+      genres: c.genres ? JSON.parse(c.genres) : [],
+      gallery_images: c.gallery_images ? JSON.parse(c.gallery_images) : [],
+      social_links: c.social_links ? JSON.parse(c.social_links) : {},
+      pending_changes: c.pending_changes ? JSON.parse(c.pending_changes) : null,
+      verified: !!c.verified
+    }));
+
+    res.json(parsedRows);
+  } catch (error) {
+    console.error('Get pending approvals error:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// 6. Super Admin: Approve Changes (New verification or edits)
+app.post('/api/superadmin/approve-changes/:id', async (req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT * FROM companies WHERE id = ?", [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Artist portfolio not found' });
+
+    const company = rows[0];
+
+    if (company.pending_changes) {
+      // Merge pending changes into main portfolio
+      const changes = JSON.parse(company.pending_changes);
+      
+      await pool.query(`
+        UPDATE companies SET
+          name = ?, phone = ?, website = ?, description = ?, payout_upi = ?, contact_email = ?,
+          category = ?, genres = ?, gallery_images = ?, video_url = ?, booking_price = ?, social_links = ?,
+          manager_name = ?, manager_phone = ?, manager_email = ?, pending_changes = NULL, verified = true
+        WHERE id = ?
+      `, [
+        changes.name !== undefined ? changes.name : company.name,
+        changes.phone !== undefined ? changes.phone : company.phone,
+        changes.website !== undefined ? changes.website : company.website,
+        changes.description !== undefined ? changes.description : company.description,
+        changes.payout_upi !== undefined ? changes.payout_upi : company.payout_upi,
+        changes.contact_email !== undefined ? changes.contact_email : company.contact_email,
+        changes.category !== undefined ? changes.category : company.category,
+        changes.genres !== undefined ? JSON.stringify(changes.genres) : company.genres,
+        changes.gallery_images !== undefined ? JSON.stringify(changes.gallery_images) : company.gallery_images,
+        changes.video_url !== undefined ? changes.video_url : company.video_url,
+        changes.booking_price !== undefined ? parseFloat(changes.booking_price) : company.booking_price,
+        changes.social_links !== undefined ? JSON.stringify(changes.social_links) : company.social_links,
+        changes.manager_name !== undefined ? changes.manager_name : company.manager_name,
+        changes.manager_phone !== undefined ? changes.manager_phone : company.manager_phone,
+        changes.manager_email !== undefined ? changes.manager_email : company.manager_email,
+        req.params.id
+      ]);
+    } else {
+      // Initial portfolio verification approval
+      await pool.query("UPDATE companies SET verified = true WHERE id = ?", [req.params.id]);
+    }
+
+    res.json({ message: 'Changes approved and verified successfully!' });
+
+  } catch (error) {
+    console.error('Approve changes error:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// 7. Super Admin: Reject Changes
+app.post('/api/superadmin/reject-changes/:id', async (req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT * FROM companies WHERE id = ?", [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Artist portfolio not found' });
+
+    const company = rows[0];
+
+    if (company.pending_changes) {
+      // Rejecting pending edits: keep original live info but clear pending changes
+      await pool.query("UPDATE companies SET pending_changes = NULL WHERE id = ?", [req.params.id]);
+    } else {
+      // Rejecting initial verification: do nothing or keep unverified
+      await pool.query("UPDATE companies SET verified = false WHERE id = ?", [req.params.id]);
+    }
+
+    res.json({ message: 'Changes rejected and cleared' });
+
+  } catch (error) {
+    console.error('Reject changes error:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// 8. Available Dates Calendar GET & PUT
+app.get('/api/companies/:id/calendar', async (req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT available_dates, id FROM companies WHERE id = ?", [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Artist portfolio not found' });
+
+    const company = rows[0];
+    const availableDates = company.available_dates ? JSON.parse(company.available_dates) : [];
+
+    // Also get scheduled events
+    const [eventRows] = await pool.query("SELECT id, title, start_date, venue_name, city FROM events WHERE company_id = ? AND status = 'published'", [company.id]);
+
+    res.json({
+      available_dates: availableDates,
+      events: eventRows
+    });
+
+  } catch (error) {
+    console.error('Get calendar error:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+app.put('/api/companies/:id/calendar', async (req, res) => {
+  const { available_dates } = req.body;
+  if (!Array.isArray(available_dates)) {
+    return res.status(400).json({ error: 'available_dates must be an array' });
+  }
+
+  try {
+    await pool.query(`
+      UPDATE companies 
+      SET available_dates = ? 
+      WHERE id = ?
+    `, [JSON.stringify(available_dates), req.params.id]);
+
+    res.json({ message: 'Availability calendar updated successfully!' });
+
+  } catch (error) {
+    console.error('Update calendar error:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
 
 // Initialize database
 initDB();
@@ -1250,34 +1638,52 @@ app.put('/api/companies/:id', async (req, res) => {
 
     const { 
       name, phone, website, description, payout_upi, contact_email,
-      category, genres, gallery_images, video_url, booking_price, social_links
+      category, genres, gallery_images, video_url, booking_price, social_links,
+      manager_name, manager_phone, manager_email
     } = req.body;
 
-    const updatedName = name !== undefined ? name : company.name;
-    const updatedPhone = phone !== undefined ? phone : company.phone;
-    const updatedWebsite = website !== undefined ? website : company.website;
-    const updatedDescription = description !== undefined ? description : company.description;
-    const updatedPayoutUpi = payout_upi !== undefined ? payout_upi : company.payout_upi;
-    const updatedContactEmail = contact_email !== undefined ? contact_email : company.contact_email;
-    const updatedCategory = category !== undefined ? category : company.category;
-    const updatedGenres = genres !== undefined ? JSON.stringify(genres) : company.genres;
-    const updatedGalleryImages = gallery_images !== undefined ? JSON.stringify(gallery_images) : company.gallery_images;
-    const updatedVideoUrl = video_url !== undefined ? video_url : company.video_url;
-    const updatedBookingPrice = booking_price !== undefined ? parseFloat(booking_price) : company.booking_price;
-    const updatedSocialLinks = social_links !== undefined ? JSON.stringify(social_links) : company.social_links;
+    const payload = {
+      name: name !== undefined ? name : company.name,
+      phone: phone !== undefined ? phone : company.phone,
+      website: website !== undefined ? website : company.website,
+      description: description !== undefined ? description : company.description,
+      payout_upi: payout_upi !== undefined ? payout_upi : company.payout_upi,
+      contact_email: contact_email !== undefined ? contact_email : company.contact_email,
+      category: category !== undefined ? category : company.category,
+      genres: genres !== undefined ? genres : (company.genres ? JSON.parse(company.genres) : []),
+      gallery_images: gallery_images !== undefined ? gallery_images : (company.gallery_images ? JSON.parse(company.gallery_images) : []),
+      video_url: video_url !== undefined ? video_url : company.video_url,
+      booking_price: booking_price !== undefined ? parseFloat(booking_price) : company.booking_price,
+      social_links: social_links !== undefined ? social_links : (company.social_links ? JSON.parse(company.social_links) : {}),
+      manager_name: manager_name !== undefined ? manager_name : company.manager_name,
+      manager_phone: manager_phone !== undefined ? manager_phone : company.manager_phone,
+      manager_email: manager_email !== undefined ? manager_email : company.manager_email
+    };
 
-    await pool.query(`
-      UPDATE companies SET
-        name = ?, phone = ?, website = ?, description = ?, payout_upi = ?, contact_email = ?,
-        category = ?, genres = ?, gallery_images = ?, video_url = ?, booking_price = ?, social_links = ?
-      WHERE id = ?
-    `, [
-      updatedName, updatedPhone, updatedWebsite, updatedDescription, updatedPayoutUpi, updatedContactEmail,
-      updatedCategory, updatedGenres, updatedGalleryImages, updatedVideoUrl, updatedBookingPrice, updatedSocialLinks,
-      req.params.id
-    ]);
+    if (company.verified) {
+      // If already verified, updates must go to pending_changes for superadmin approval
+      await pool.query(`
+        UPDATE companies SET pending_changes = ? WHERE id = ?
+      `, [JSON.stringify(payload), req.params.id]);
+      
+      res.json({ message: 'Portfolio changes submitted for Super Admin approval. Your live profile remains active with original details.' });
+    } else {
+      // If not verified yet (new profile), allow updating directly so they can complete onboarding
+      await pool.query(`
+        UPDATE companies SET
+          name = ?, phone = ?, website = ?, description = ?, payout_upi = ?, contact_email = ?,
+          category = ?, genres = ?, gallery_images = ?, video_url = ?, booking_price = ?, social_links = ?,
+          manager_name = ?, manager_phone = ?, manager_email = ?
+        WHERE id = ?
+      `, [
+        payload.name, payload.phone, payload.website, payload.description, payload.payout_upi, payload.contact_email,
+        payload.category, JSON.stringify(payload.genres), JSON.stringify(payload.gallery_images), payload.video_url,
+        payload.booking_price, JSON.stringify(payload.social_links), payload.manager_name, payload.manager_phone,
+        payload.manager_email, req.params.id
+      ]);
 
-    res.json({ message: 'Company updated successfully' });
+      res.json({ message: 'Company updated successfully' });
+    }
   } catch (err) {
     console.error("Update company error:", err);
     res.status(500).json({ error: 'Database error' });
@@ -1305,6 +1711,7 @@ app.get('/api/admin/global-stats', async (req, res) => {
     const [eventRows] = await pool.query("SELECT * FROM events");
     const [companyRows] = await pool.query("SELECT * FROM companies");
     const [bookingRows] = await pool.query("SELECT * FROM bookings");
+    const [profileRows] = await pool.query("SELECT COUNT(*) as count FROM profiles");
 
     const parsedEvents = eventRows.map(e => ({
       ...e,
@@ -1321,6 +1728,7 @@ app.get('/api/admin/global-stats', async (req, res) => {
     const totalRevenue = bookingRows.reduce((sum, b) => sum + (parseFloat(b.total_amount) || 0), 0);
     const totalBookings = bookingRows.reduce((sum, b) => sum + (parseInt(b.quantity) || 1), 0);
     const activeEvents = parsedEvents.filter(e => e.status === 'published').length;
+    const totalUsers = profileRows[0]?.count || 0;
 
     res.json({
       events: parsedEvents,
@@ -1328,7 +1736,8 @@ app.get('/api/admin/global-stats', async (req, res) => {
       stats: {
         totalRevenue,
         totalBookings,
-        activeEvents
+        activeEvents,
+        totalUsers
       }
     });
   } catch (err) {
@@ -1351,7 +1760,8 @@ app.get('/api/admin/global-stats', async (req, res) => {
       stats: {
         totalRevenue: 28989,
         totalBookings: 80,
-        activeEvents: parsedEvents.length
+        activeEvents: parsedEvents.length,
+        totalUsers: 86
       }
     });
   }
